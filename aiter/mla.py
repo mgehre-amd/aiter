@@ -205,12 +205,6 @@ def mla_decode_fwd(
             num_kv_splits, num_kv_splits_indptr = get_meta_param(
                 num_kv_splits, bs, total_kv, nhead, max_seqlen_q, q.dtype
             )
-        # bf16 qh8 kernels handle all KV internally; force single split
-        if q.dtype == dtypes.bf16 and kv_buffer.dtype == dtypes.bf16 and nhead == 8:
-            num_kv_splits = 1
-            num_kv_splits_indptr = torch.arange(
-                0, bs + 1, dtype=torch.int, device=device
-            )
 
         mgc = 64 if max_seqlen_q == 1 and nhead in [8, 16] else 16
         mgc = (
