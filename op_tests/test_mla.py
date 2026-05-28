@@ -564,6 +564,7 @@ def test_mla(
     err = None
     us_asm_decode = 1e12
     if (dtype == torch.bfloat16 and kvtype == torch.bfloat16) and nhead in [
+        8,
         16,
         32,
         64,
