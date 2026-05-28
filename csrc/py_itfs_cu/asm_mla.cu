@@ -354,7 +354,6 @@ void mla_decode_stage1_asm_fwd(
     } else if (gqa_ratio == 8){
         if (q_type == "bf16" && kv_type == "bf16"){
             if(!persistent){
-                config_max_seqlen_q = 1;
                 sub_Q = 8;
             }
         } else if (q_type == "fp8" && kv_type == "fp8"){
