@@ -205,7 +205,6 @@ def mla_decode_fwd(
             num_kv_splits, num_kv_splits_indptr = get_meta_param(
                 num_kv_splits, bs, total_kv, nhead, max_seqlen_q, q.dtype
             )
-
         mgc = 64 if max_seqlen_q == 1 and nhead in [8, 16] else 16
         mgc = (
             32
