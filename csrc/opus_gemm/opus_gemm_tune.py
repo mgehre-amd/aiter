@@ -1689,6 +1689,33 @@ class OpusGemmA16W16Tuner(GemmCommonTuner):
                 tasks_data.append((0, ()))
                 continue
 
+            # 4 GiB buffer-resource cap. The opus a16w16 launchers build a
+            # single AMDGPU buffer-resource over each of A / B / C; the
+            # `num_records` field is 32-bit, so any of the three tensors
+            # exceeding UINT32_MAX bytes wraps to ~0 -> kernel writes past
+            # the allocation (manifests as "Memory access fault ... Write
+            # access to a read-only page" on the C tile). Reject the whole
+            # shape before any kid runs. Same bound is enforced at the
+            # opus runtime entry in gemm_op_a16w16._validate_and_reshape.
+            UINT32_MAX_BYTES = (1 << 32) - 1
+            a_elem = torch.tensor([], dtype=in_dtype).element_size()
+            c_elem = torch.tensor([], dtype=out_dtype).element_size()
+            a_bytes = M * K * a_elem
+            b_bytes = N * K * a_elem  # B shares A's dtype in a16w16
+            c_bytes = M * N * c_elem
+            if (
+                a_bytes > UINT32_MAX_BYTES
+                or b_bytes > UINT32_MAX_BYTES
+                or c_bytes > UINT32_MAX_BYTES
+            ):
+                logger.warning(
+                    f"OpusGemmA16W16Tuner: skipping row M={M} N={N} K={K} "
+                    f"(A={a_bytes}B, B={b_bytes}B, "
+                    f"C={c_bytes}B exceeds 4GiB buffer-resource cap)"
+                )
+                tasks_data.append((0, ()))
+                continue
+
             seed = seed + 1
 
             total_kernel_nums = 0

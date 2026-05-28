@@ -359,6 +359,32 @@ def _validate_and_reshape(A: Tensor, B: Tensor, bias, dtype, out):
             f"B must be 2D [N, K] or 3D [batch, N, K] (got shape " f"{tuple(B.shape)})"
         )
 
+    # 4 GiB buffer-resource cap. The opus a16w16 launchers build a single
+    # AMDGPU buffer-resource over each of A / B / C; the `num_records` field
+    # is 32-bit, so any of the three tensors exceeding UINT32_MAX bytes wraps
+    # to ~0 -> kernel writes past the allocation (manifests as
+    # "Memory access fault ... Write access to a read-only page" on the C
+    # tile). Reject up front -- callers should route to a non-opus a16w16
+    # backend for shapes this large. Same bound is enforced at tune time in
+    # csrc/opus_gemm/opus_gemm_tune.py.
+    _UINT32_MAX_BYTES = (1 << 32) - 1
+    _a_bytes = M * K * A.element_size()
+    _b_bytes = N * K * B.element_size()
+    _c_bytes = M * N * torch.tensor([], dtype=dtype).element_size()
+    if (
+        _a_bytes > _UINT32_MAX_BYTES
+        or _b_bytes > _UINT32_MAX_BYTES
+        or _c_bytes > _UINT32_MAX_BYTES
+    ):
+        raise ValueError(
+            f"gemm_a16w16_opus: shape exceeds opus 4GiB buffer-resource cap "
+            f"(M={M}, N={N}, K={K}, "
+            f"A={_a_bytes}B, B={_b_bytes}B, C={_c_bytes}B). "
+            f"The opus a16w16 kernels build a single 32-bit-num_records "
+            f"buffer-resource per tensor and will write out of bounds at "
+            f"this size; dispatch to a non-opus a16w16 backend instead."
+        )
+
     if out is not None:
         Y = out
     else:

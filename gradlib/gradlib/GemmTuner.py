@@ -678,6 +678,31 @@ class Gemm:
             return []
         if self.scaleAB or self.indtype != dtypes.bf16:
             return []
+        # 4 GiB buffer-resource cap. The opus a16w16 launchers build a
+        # single AMDGPU buffer-resource over each of A / B / C; the
+        # `num_records` field is 32-bit, so any of the three tensors
+        # exceeding UINT32_MAX bytes wraps to ~0 and the kernel writes
+        # past the allocation (manifests as "Memory access fault ...
+        # Write access to a read-only page" on the C tile). Reject all
+        # opus kids for this shape up front. Mirrored at the opus runtime
+        # entry in aiter/ops/opus/gemm_op_a16w16.py:_validate_and_reshape.
+        _UINT32_MAX_BYTES = (1 << 32) - 1
+        _a_elem = torch.tensor([], dtype=self.indtype).element_size()
+        _c_elem = torch.tensor([], dtype=self.outdtype).element_size()
+        _a_bytes = self.m * self.k * _a_elem
+        _b_bytes = self.n * self.k * _a_elem  # B shares A dtype in a16w16
+        _c_bytes = self.m * self.n * _c_elem
+        if (
+            _a_bytes > _UINT32_MAX_BYTES
+            or _b_bytes > _UINT32_MAX_BYTES
+            or _c_bytes > _UINT32_MAX_BYTES
+        ):
+            logger.warning(
+                f"opus: skipping M={self.m} N={self.n} K={self.k} "
+                f"(A={_a_bytes}B, B={_b_bytes}B, C={_c_bytes}B exceeds "
+                f"4GiB buffer-resource cap; all kids would OOB write)"
+            )
+            return []
         tasks = []
         cu_num = get_cu_num()
         # Smart candidate selection: instead of iterating ALL kids for every
