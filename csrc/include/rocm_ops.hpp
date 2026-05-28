@@ -1681,7 +1681,9 @@ namespace py = pybind11;
 #define FUSED_QKNORM_ROPE_CACHE_QUANT_PYBIND                                        \
     m.def("fused_qk_norm_rope_cache_quant_shuffle",                                 \
           &aiter::fused_qk_norm_rope_cache_quant_shuffle,                           \
-          py::arg("qkv"),                                                          \
+          py::arg("q"),                                                            \
+          py::arg("k"),                                                            \
+          py::arg("v"),                                                            \
           py::arg("num_heads_q"),                                                  \
           py::arg("num_heads_k"),                                                  \
           py::arg("num_heads_v"),                                                  \
@@ -1697,10 +1699,7 @@ namespace py = pybind11;
           py::arg("slot_mapping"),                                                 \
           py::arg("kv_cache_dtype"),                                               \
           py::arg("k_scale"),                                                      \
-          py::arg("v_scale"),                                                      \
-          py::arg("q")        = py::none(),                                        \
-          py::arg("k")        = py::none(),                                        \
-          py::arg("v")        = py::none());                                       \
+          py::arg("v_scale"));                                                     \
     m.def("fused_qk_rmsnorm",                                   \
           &aiter::fused_qk_rmsnorm,                             \
           py::arg("q"),                                         \

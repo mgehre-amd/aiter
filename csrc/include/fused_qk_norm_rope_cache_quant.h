@@ -7,8 +7,9 @@ using namespace at;
 namespace aiter {
 
 void fused_qk_norm_rope_cache_quant_shuffle(
-    at::Tensor& qkv, // Deprecated concatenated QKV [num_tokens, total_heads*head_dim]. May be empty
-                     // when using opt_q/opt_k/opt_v only. If both are passed, q/k/v win; qkv is ignored.
+    at::Tensor& q,                   // 2D [T, Hq*D] or 3D [T, Hq, D]
+    at::Tensor& k,                   // 2D [T, Hk*D] or 3D [T, Hk, D]
+    at::Tensor& v,                   // 2D [T, Hv*D] or 3D [T, Hv, D]
     int64_t num_heads_q,               // Number of query heads
     int64_t num_heads_k,               // Number of key heads
     int64_t num_heads_v,               // Number of value heads
@@ -25,10 +26,7 @@ void fused_qk_norm_rope_cache_quant_shuffle(
     at::Tensor& slot_mapping,          // slot mapping
     const std::string& kv_cache_dtype, // kv cache data type
     std::optional<at::Tensor> k_scale, // k scale tensor for quantized k cache
-    std::optional<at::Tensor> v_scale, // v scale tensor for quantized v cache
-    std::optional<at::Tensor> opt_q = c10::nullopt, // 2D [T, Hq*D] or 3D [T, Hq, D]; arbitrary strides (kernel uses scalar path if dim stride != 1)
-    std::optional<at::Tensor> opt_k = c10::nullopt, // 2D [T, Hk*D] or 3D [T, Hk, D]
-    std::optional<at::Tensor> opt_v = c10::nullopt  // 2D [T, Hv*D] or 3D [T, Hv, D]
+    std::optional<at::Tensor> v_scale  // v scale tensor for quantized v cache
 );
 
 void fused_qk_norm_rope_cache_pts_quant_shuffle(at::Tensor& qkv,
