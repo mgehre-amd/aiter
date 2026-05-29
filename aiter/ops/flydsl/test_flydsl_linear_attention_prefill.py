@@ -4,7 +4,8 @@
 """Unit tests for FlyDSL Linear Attention Prefill (chunk_gated_delta_h) regressions.
 
 Usage:
-    pytest -sv aiter/ops/flydsl/test_flydsl_linear_attention_prefill.py
+    HIP_VISIBLE_DEVICES=7 pytest -sv aiter/ops/flydsl/test_flydsl_linear_attention_prefill.py::TestPerformance -s
+    HIP_VISIBLE_DEVICES=7 python -m pytest aiter/ops/flydsl/test_flydsl_linear_attention_prefill.py::TestPerformanceCI -s
 """
 
 from __future__ import annotations
@@ -375,10 +376,10 @@ STATE_BF16_TEST_IDS = [repr(p) for p in STATE_BF16_PARAMS]
 
 # -- bench333 CI regression subset (paired with TestPerformanceCI) ------
 
-# 28 representative cases covering all distinct (T_bucket, N_bucket,
+# 35 representative cases covering all distinct (T_bucket, N_bucket,
 # mid_bucket, BV) signatures of the 333-shape bench333 trace, one
-# highest-log_count case per signature. Covers 13,896 / 28,152 =
-# 49.4% of the trace's total log_count weight.
+# highest-log_count case per signature, plus nearest-T probes around
+# 16k / 32k.
 #
 # Derived offline from ``bench_407_prefill_only.csv`` +
 # ``chunk_gdn_h_bench407_tuned.csv``; encoded here as a frozenset of
@@ -396,6 +397,17 @@ STATE_BF16_TEST_IDS = [repr(p) for p in STATE_BF16_PARAMS]
 # and have some variance across runs (~0.05x on long-T single-seg
 # cases); rerank if the population shifts > 0.20x.
 REP_BENCH333_IDS = [
+    # --- Nearest-T probes around 16k / 32k ---
+    "prefill-bench333_T15864_n4_cnt36",
+    "prefill-bench333_T15211_n2_cnt36",
+    "prefill-bench333_T15000_n3_cnt828",
+    "prefill-bench333_T15000_n15_cnt36",
+    "prefill-bench333_T17976_n2_cnt36",
+    "prefill-bench333_T32767_n4_cnt252",
+    "prefill-bench333_T32767_n7_cnt144",
+    "prefill-bench333_T32766_n4_cnt72",
+    "prefill-bench333_T32765_n7_cnt36",
+    "prefill-bench333_T32764_n4_cnt252",
     # --- FlyDSL clearly beats vLLM (fly/vllm > 1.10x, 9 cases) ---
     "prefill-bench333_T5000_n1_cnt2844",    # rvllm=1.55x
     "prefill-bench333_T4469_n1_cnt180",     # rvllm=1.54x
@@ -412,11 +424,8 @@ REP_BENCH333_IDS = [
     "prefill-bench333_T11745_n3_cnt36",     # rvllm=1.01x
     "prefill-bench333_T32000_n32_cnt180",   # rvllm=0.99x
     "prefill-bench333_T23499_n3_cnt108",    # rvllm=0.98x
-    "prefill-bench333_T15864_n4_cnt36",     # rvllm=0.98x
-    "prefill-bench333_T15000_n3_cnt828",    # rvllm=0.97x
     "prefill-bench333_T30000_n3_cnt1080",   # rvllm=0.96x
     "prefill-bench333_T30000_n6_cnt360",    # rvllm=0.96x
-    "prefill-bench333_T32767_n4_cnt252",    # rvllm=0.96x
     "prefill-bench333_T32755_n33_cnt72",    # rvllm=0.96x
     "prefill-bench333_T20000_n20_cnt288",   # rvllm=0.95x
     "prefill-bench333_T27236_n6_cnt144",    # rvllm=0.95x
